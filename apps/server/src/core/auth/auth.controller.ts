@@ -17,6 +17,7 @@ import {
 } from '../../integrations/throttle/throttler-names';
 import { LoginDto } from './dto/login.dto';
 import { AuthService } from './services/auth.service';
+import { AuthCookieService } from './services/auth-cookie.service';
 import { SessionService } from '../session/session.service';
 import { SetupGuard } from './guards/setup.guard';
 import { EnvironmentService } from '../../integrations/environment/environment.service';
@@ -48,6 +49,7 @@ export class AuthController {
     private authService: AuthService,
     private sessionService: SessionService,
     private environmentService: EnvironmentService,
+    private authCookieService: AuthCookieService,
     private moduleRef: ModuleRef,
     @Inject(AUDIT_SERVICE) private readonly auditService: IAuditService,
   ) {}
@@ -59,7 +61,10 @@ export class AuthController {
     @Res({ passthrough: true }) res: FastifyReply,
     @Body() loginInput: LoginDto,
   ) {
-    validateSsoEnforcement(workspace);
+    validateSsoEnforcement(
+      workspace,
+      this.environmentService.isGoogleSsoEnforced(),
+    );
 
     let MfaModule: any;
     let isMfaModuleReady = false;
@@ -94,14 +99,14 @@ export class AuthController {
           };
         } else if (mfaResult.authToken) {
           // User doesn't have MFA and workspace doesn't require it
-          this.setAuthCookie(res, mfaResult.authToken);
+          this.authCookieService.setAuthCookie(res, mfaResult.authToken);
           return;
         }
       }
     }
 
     const authToken = await this.authService.login(loginInput, workspace.id);
-    this.setAuthCookie(res, authToken);
+    this.authCookieService.setAuthCookie(res, authToken);
   }
 
   @UseGuards(SetupGuard)
@@ -114,7 +119,7 @@ export class AuthController {
     const { workspace, authToken } =
       await this.authService.setup(createAdminUserDto);
 
-    this.setAuthCookie(res, authToken);
+    this.authCookieService.setAuthCookie(res, authToken);
     return workspace;
   }
 
@@ -143,7 +148,10 @@ export class AuthController {
     @Body() forgotPasswordDto: ForgotPasswordDto,
     @AuthWorkspace() workspace: Workspace,
   ) {
-    validateSsoEnforcement(workspace);
+    validateSsoEnforcement(
+      workspace,
+      this.environmentService.isGoogleSsoEnforced(),
+    );
     return this.authService.forgotPassword(forgotPasswordDto, workspace);
   }
 
@@ -166,7 +174,7 @@ export class AuthController {
     }
 
     // Set auth cookie if no MFA is required
-    this.setAuthCookie(res, result.authToken);
+    this.authCookieService.setAuthCookie(res, result.authToken);
     return {
       requiresLogin: false,
     };
@@ -219,13 +227,4 @@ export class AuthController {
     });
   }
 
-  setAuthCookie(res: FastifyReply, token: string) {
-    res.setCookie('authToken', token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
-      expires: this.environmentService.getCookieExpiresIn(),
-      secure: this.environmentService.isHttps(),
-    });
-  }
 }

@@ -92,6 +92,10 @@ export class WsService {
     this.server.to(rooms).emit('message', data);
   }
 
+  emitToSpace(spaceId: string, data: any): void {
+    this.server.to(getSpaceRoomName(spaceId)).emit('message', data);
+  }
+
   async emitToSpaceExceptUsers(
     spaceId: string,
     excludeUserIds: string[],

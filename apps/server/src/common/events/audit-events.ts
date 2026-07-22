@@ -6,6 +6,12 @@ export const AuditEvent = {
   WORKSPACE_INVITE_RESENT: 'workspace.invite_resent',
   WORKSPACE_INVITE_REVOKED: 'workspace.invite_revoked',
 
+  // Audit administration
+  AUDIT_EXPORTED: 'audit.exported',
+  AUDIT_INTEGRITY_VERIFIED: 'audit.integrity_verified',
+  AUDIT_RETENTION_UPDATED: 'audit.retention_updated',
+  AUDIT_PURGED: 'audit.purged',
+
   // User
   USER_CREATED: 'user.created',
   USER_DELETED: 'user.deleted',
@@ -87,6 +93,20 @@ export const AuditEvent = {
   SSO_PROVIDER_UPDATED: 'sso.provider_updated',
   SSO_PROVIDER_DELETED: 'sso.provider_deleted',
 
+  // Kanban
+  KANBAN_BOARD_CREATED: 'kanban.board_created',
+  KANBAN_BOARD_UPDATED: 'kanban.board_updated',
+  KANBAN_BOARD_DELETED: 'kanban.board_deleted',
+  KANBAN_COLUMN_CREATED: 'kanban.column_created',
+  KANBAN_COLUMN_UPDATED: 'kanban.column_updated',
+  KANBAN_COLUMN_MOVED: 'kanban.column_moved',
+  KANBAN_COLUMN_DELETED: 'kanban.column_deleted',
+  KANBAN_CARD_CREATED: 'kanban.card_created',
+  KANBAN_CARD_UPDATED: 'kanban.card_updated',
+  KANBAN_CARD_MOVED: 'kanban.card_moved',
+  KANBAN_CARD_ASSIGNED: 'kanban.card_assigned',
+  KANBAN_CARD_DELETED: 'kanban.card_deleted',
+
   // MFA
   USER_MFA_ENABLED: 'user.mfa_enabled',
   USER_MFA_DISABLED: 'user.mfa_disabled',
@@ -111,7 +131,7 @@ export const EXCLUDED_AUDIT_EVENTS: Set<string> = new Set([
   AuditEvent.COMMENT_UPDATED,
   AuditEvent.COMMENT_RESOLVED,
   AuditEvent.COMMENT_REOPENED,
-  AuditEvent.ATTACHMENT_UPLOADED
+  AuditEvent.ATTACHMENT_UPLOADED,
 ]);
 
 export const AuditResource = {
@@ -129,6 +149,10 @@ export const AuditResource = {
   WORKSPACE_INVITATION: 'workspace_invitation',
   ATTACHMENT: 'attachment',
   LICENSE: 'license',
+  AUDIT: 'audit',
+  KANBAN_BOARD: 'kanban_board',
+  KANBAN_COLUMN: 'kanban_column',
+  KANBAN_CARD: 'kanban_card',
 } as const;
 
 export type AuditResourceType =

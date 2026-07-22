@@ -45,6 +45,54 @@ export class EnvironmentService {
     return this.configService.get<string>('APP_SECRET');
   }
 
+  isGoogleSsoEnabled(): boolean {
+    return (
+      this.configService
+        .get<string>('GOOGLE_SSO_ENABLED', 'false')
+        .toLowerCase() === 'true'
+    );
+  }
+
+  getGoogleSsoClientId(): string {
+    return this.configService.get<string>('GOOGLE_SSO_CLIENT_ID', '');
+  }
+
+  getGoogleSsoClientSecret(): string {
+    return this.configService.get<string>('GOOGLE_SSO_CLIENT_SECRET', '');
+  }
+
+  getGoogleSsoAllowedDomains(): string[] {
+    return this.configService
+      .get<string>('GOOGLE_SSO_ALLOWED_DOMAINS', '')
+      .split(',')
+      .map((domain) => domain.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  isGoogleSsoSignupAllowed(): boolean {
+    return (
+      this.configService
+        .get<string>('GOOGLE_SSO_ALLOW_SIGNUP', 'false')
+        .toLowerCase() === 'true'
+    );
+  }
+
+  isGoogleSsoEnforced(): boolean {
+    return (
+      this.isGoogleSsoEnabled() &&
+      this.configService
+        .get<string>('GOOGLE_SSO_ENFORCE', 'false')
+        .toLowerCase() === 'true'
+    );
+  }
+
+  getGoogleSsoDisplayName(): string {
+    return this.configService.get<string>(
+      'GOOGLE_SSO_DISPLAY_NAME',
+      'Google Workspace',
+    );
+  }
+
   getDatabaseURL(): string {
     return this.configService.get<string>('DATABASE_URL');
   }

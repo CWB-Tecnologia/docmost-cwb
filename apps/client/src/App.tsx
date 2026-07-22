@@ -39,7 +39,7 @@ import UserApiKeys from "@/ee/api-key/pages/user-api-keys";
 import WorkspaceApiKeys from "@/ee/api-key/pages/workspace-api-keys";
 import AiSettings from "@/ee/ai/pages/ai-settings.tsx";
 import BasePage from "@/ee/base/pages/base-page.tsx";
-import AuditLogs from "@/ee/audit/pages/audit-logs.tsx";
+import AuditLogs from "@/features/audit/pages/audit-logs";
 import VerifiedPages from "@/ee/page-verification/pages/verified-pages.tsx";
 import TemplateList from "@/ee/template/pages/template-list";
 import TemplateEditor from "@/ee/template/pages/template-editor";
@@ -47,6 +47,8 @@ import FavoritesPage from "@/pages/favorites/favorites-page";
 import AiChat from "@/ee/ai-chat/pages/ai-chat.tsx";
 import VerifyEmail from "@/ee/pages/verify-email.tsx";
 import LabelPage from "@/pages/label/label-page";
+import KanbanListPage from "@/features/kanban/pages/kanban-list-page.tsx";
+import KanbanBoardPage from "@/features/kanban/pages/kanban-board-page.tsx";
 
 export default function App() {
   const { t } = useTranslation();
@@ -102,6 +104,11 @@ export default function App() {
           />
           <Route path={"/s/:spaceSlug"} element={<SpaceHome />} />
           <Route path={"/s/:spaceSlug/trash"} element={<SpaceTrash />} />
+          <Route path={"/s/:spaceSlug/boards"} element={<KanbanListPage />} />
+          <Route
+            path={"/s/:spaceSlug/boards/:boardId"}
+            element={<KanbanBoardPage />}
+          />
           <Route
             path={"/s/:spaceSlug/p/:pageSlug"}
             element={<Page />}

@@ -114,7 +114,15 @@ export class WorkspaceService {
 
     const { licenseKey, plan, ...rest } = workspace;
 
-    return rest;
+    const googleSsoEnabled = this.environmentService.isGoogleSsoEnabled();
+    return {
+      ...rest,
+      enforceSso: rest.enforceSso || this.environmentService.isGoogleSsoEnforced(),
+      googleSso: {
+        enabled: googleSsoEnabled,
+        displayName: this.environmentService.getGoogleSsoDisplayName(),
+      },
+    };
   }
 
   async create(

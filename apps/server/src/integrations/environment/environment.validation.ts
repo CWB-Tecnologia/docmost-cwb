@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   MinLength,
   ValidateIf,
   validateSync,
@@ -43,6 +44,41 @@ export class EnvironmentVariables {
   @MinLength(32)
   @IsNotIn(['REPLACE_WITH_LONG_SECRET'])
   APP_SECRET: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  GOOGLE_SSO_ENABLED: string;
+
+  @ValidateIf((obj) => obj.GOOGLE_SSO_ENABLED === 'true')
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_SSO_CLIENT_ID: string;
+
+  @ValidateIf((obj) => obj.GOOGLE_SSO_ENABLED === 'true')
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_SSO_CLIENT_SECRET: string;
+
+  @ValidateIf((obj) => obj.GOOGLE_SSO_ENABLED === 'true')
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/[A-Za-z0-9]/, {
+    message: 'GOOGLE_SSO_ALLOWED_DOMAINS must include at least one domain',
+  })
+  GOOGLE_SSO_ALLOWED_DOMAINS: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  GOOGLE_SSO_ALLOW_SIGNUP: string;
+
+  @IsOptional()
+  @IsIn(['true', 'false'])
+  GOOGLE_SSO_ENFORCE: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_SSO_DISPLAY_NAME: string;
 
   @IsOptional()
   @IsIn(['smtp', 'postmark'])

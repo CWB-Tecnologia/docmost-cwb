@@ -27,7 +27,10 @@ import APP_ROUTE, { getPostLoginRedirect } from "@/lib/app-route.ts";
 import { RESET } from "jotai/utils";
 import { useTranslation } from "react-i18next";
 import { isCloud } from "@/lib/config.ts";
-import { exchangeTokenRedirectUrl, getHostnameUrl } from "@/ee/utils.ts";
+import {
+  exchangeTokenRedirectUrl,
+  getHostnameUrl,
+} from "@/lib/cloud-url.ts";
 
 export default function useAuth() {
   const { t } = useTranslation();

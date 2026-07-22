@@ -1,4 +1,8 @@
-import { IAuthProvider } from "@/ee/security/types/security.types.ts";
+export interface IAuthProvider {
+  id: string;
+  name: string;
+  type: string;
+}
 
 export interface IWorkspace {
   id: string;
@@ -99,6 +103,10 @@ export interface IPublicWorkspace {
   hostname: string;
   enforceSso: boolean;
   authProviders: IAuthProvider[];
+  googleSso: {
+    enabled: boolean;
+    displayName: string;
+  };
 }
 
 export interface IVersion {

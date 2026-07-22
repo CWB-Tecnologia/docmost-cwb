@@ -68,12 +68,27 @@ export interface Audit {
   changes: Json | null;
   createdAt: Generated<Timestamp>;
   event: string;
+  hash: string;
   id: Generated<string>;
   ipAddress: string | null;
   metadata: Json | null;
+  prevHash: string;
   resourceId: string | null;
   resourceType: string;
+  seq: number;
   spaceId: string | null;
+  userAgent: string | null;
+  workspaceId: string;
+}
+
+export interface AuditCheckpoint {
+  checkpointHash: string;
+  id: Generated<string>;
+  prevCheckpointHash: string;
+  rowCount: number;
+  sealedAt: Generated<Timestamp>;
+  upToHash: string;
+  upToSeq: number;
   workspaceId: string;
 }
 
@@ -115,6 +130,42 @@ export interface AuthProviders {
   type: string;
   updatedAt: Generated<Timestamp>;
   workspaceId: string;
+}
+
+export interface KanbanBoards {
+  id: Generated<string>;
+  title: string;
+  spaceId: string;
+  workspaceId: string;
+  creatorId: string | null;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface KanbanColumns {
+  id: Generated<string>;
+  boardId: string;
+  name: string;
+  color: string | null;
+  position: string;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
+}
+
+export interface KanbanCards {
+  id: Generated<string>;
+  boardId: string;
+  columnId: string;
+  title: string;
+  description: string | null;
+  position: string;
+  assigneeId: string | null;
+  priority: string | null;
+  dueDate: Timestamp | null;
+  labels: Generated<Json>;
+  creatorId: string | null;
+  createdAt: Generated<Timestamp>;
+  updatedAt: Generated<Timestamp>;
 }
 
 export interface Backlinks {
@@ -642,8 +693,12 @@ export interface DB {
   apiKeys: ApiKeys;
   attachments: Attachments;
   audit: Audit;
+  auditCheckpoint: AuditCheckpoint;
   authAccounts: AuthAccounts;
   authProviders: AuthProviders;
+  kanbanBoards: KanbanBoards;
+  kanbanColumns: KanbanColumns;
+  kanbanCards: KanbanCards;
   backlinks: Backlinks;
   baseProperties: BaseProperties;
   baseRows: BaseRows;

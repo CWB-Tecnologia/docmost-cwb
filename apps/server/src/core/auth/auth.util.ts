@@ -33,8 +33,11 @@ export function throwIfEmailNotVerified(opts: {
   });
 }
 
-export function validateSsoEnforcement(workspace: Workspace) {
-  if (workspace.enforceSso) {
+export function validateSsoEnforcement(
+  workspace: Workspace,
+  googleSsoEnforced = false,
+) {
+  if (workspace.enforceSso || googleSsoEnforced) {
     throw new BadRequestException('This workspace has enforced SSO login.');
   }
 }

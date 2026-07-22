@@ -24,6 +24,8 @@ import { WatcherModule } from './watcher/watcher.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { SessionModule } from './session/session.module';
 import { ClsMiddleware } from 'nestjs-cls';
+import { GoogleSsoModule } from './sso/google-sso.module';
+import { KanbanModule } from './kanban/kanban.module';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { ClsMiddleware } from 'nestjs-cls';
     NotificationModule,
     WatcherModule,
     SessionModule,
+    GoogleSsoModule,
+    KanbanModule,
   ],
 })
 export class CoreModule implements NestModule {

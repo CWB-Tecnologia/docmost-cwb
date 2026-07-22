@@ -18,6 +18,29 @@ export interface IStripeSeatsSyncJob {
   workspaceId: string;
 }
 
+export interface IAuditLogJob {
+  eventId: string;
+  workspaceId: string;
+  actorId?: string | null;
+  actorType: 'user' | 'system' | 'api_key';
+  event: string;
+  resourceType: string;
+  resourceId?: string | null;
+  spaceId?: string | null;
+  changes?: Record<string, any> | null;
+  metadata?: Record<string, any> | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  // ISO 8601 string; BullMQ serializes job data to JSON, so this is a string
+  // by the time the processor reads it and must be parsed back to a Date.
+  createdAt: string;
+}
+
+export interface IAuditCleanupJob {
+  workspaceId: string;
+  retentionDays: number;
+}
+
 export interface IPageHistoryJob {
   pageId: string;
 }

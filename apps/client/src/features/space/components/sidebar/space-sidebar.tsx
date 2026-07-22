@@ -13,6 +13,7 @@ import {
   IconEyeOff,
   IconFileExport,
   IconHome,
+  IconLayoutKanban,
   IconPlus,
   IconSearch,
   IconSettings,
@@ -141,6 +142,26 @@ export function SpaceSidebar() {
                   stroke={2}
                 />
                 <span>{t("Search")}</span>
+              </div>
+            </UnstyledButton>
+
+            <UnstyledButton
+              component={Link}
+              to={`/s/${spaceSlug}/boards`}
+              className={clsx(
+                classes.menu,
+                location.pathname.toLowerCase().startsWith(`/s/${spaceSlug}/boards`)
+                  ? classes.activeButton
+                  : "",
+              )}
+            >
+              <div className={classes.menuItemInner}>
+                <IconLayoutKanban
+                  size={18}
+                  className={classes.menuItemIcon}
+                  stroke={2}
+                />
+                <span>{t("Boards")}</span>
               </div>
             </UnstyledButton>
 

@@ -118,10 +118,11 @@ const groupedData: DataGroup[] = [
         role: "admin",
       },
       {
+        // Audit log is now a self-hosted AGPL feature (see features/audit),
+        // so it is gated by owner role only, not the EE entitlement flag.
         label: "Audit log",
         icon: IconHistory,
         path: "/settings/audit",
-        feature: Feature.AUDIT_LOGS,
         role: "owner",
         env: "selfhosted",
       },

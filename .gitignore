@@ -41,3 +41,8 @@ lerna-debug.log*
 .nx
 .nx/installation
 .nx/cache
+
+# Local Graphify second-brain artifacts
+/.graphifyignore
+/graphify-out/
+/.pnpm-store/

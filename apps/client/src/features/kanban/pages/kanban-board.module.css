@@ -1,0 +1,48 @@
+.boardPage {
+  min-width: 0;
+  padding: var(--mantine-spacing-lg);
+}
+
+.boardScroller {
+  overflow-x: auto;
+  padding-bottom: var(--mantine-spacing-md);
+}
+
+.columns {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-md);
+  min-width: max-content;
+}
+
+.column {
+  width: 310px;
+  max-height: calc(100vh - 190px);
+  display: flex;
+  flex-direction: column;
+  background: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme="dark"] .column {
+  background: var(--mantine-color-dark-7);
+}
+
+.cardList {
+  overflow-y: auto;
+  min-height: 54px;
+}
+
+.card {
+  cursor: grab;
+  transition:
+    opacity 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.dragging {
+  opacity: 0.45;
+}

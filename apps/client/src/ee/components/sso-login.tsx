@@ -34,9 +34,13 @@ function markAutoAttempt(): void {
 
 export default function SsoLogin() {
   const { data, isLoading } = useWorkspacePublicDataQuery();
+  const authProviders = data?.authProviders as unknown as
+    | IAuthProvider[]
+    | undefined;
   const { data: currentUser } = useCurrentUser();
   const [ldapModalOpened, setLdapModalOpened] = useState(false);
-  const [selectedLdapProvider, setSelectedLdapProvider] = useState<IAuthProvider | null>(null);
+  const [selectedLdapProvider, setSelectedLdapProvider] =
+    useState<IAuthProvider | null>(null);
   const autoRedirectedRef = useRef(false);
 
   const handleSsoLogin = (provider: IAuthProvider) => {
@@ -60,8 +64,8 @@ export default function SsoLogin() {
   useEffect(() => {
     if (autoRedirectedRef.current) return;
     if (!data?.enforceSso) return;
-    if (!data.authProviders || data.authProviders.length !== 1) return;
-    const onlyProvider = data.authProviders[0];
+    if (!authProviders || authProviders.length !== 1) return;
+    const onlyProvider = authProviders[0];
     if (onlyProvider.type === SSO_PROVIDER.LDAP) return;
 
     // Already signed in: let useRedirectIfAuthenticated handle navigation
@@ -85,9 +89,9 @@ export default function SsoLogin() {
       workspaceId: data.id,
       redirect: getRedirectParam() ?? undefined,
     });
-  }, [data, currentUser]);
+  }, [authProviders, data, currentUser]);
 
-  if (!data?.authProviders || data?.authProviders?.length === 0) {
+  if (!authProviders || authProviders.length === 0) {
     return null;
   }
 
@@ -115,10 +119,10 @@ export default function SsoLogin() {
         />
       )}
 
-      {data.authProviders.length > 0 && (
+      {authProviders.length > 0 && (
         <>
           <Stack align="stretch" justify="center" gap="sm">
-            {data.authProviders.map((provider) => (
+            {authProviders.map((provider) => (
               <div key={provider.id}>
                 <Button
                   onClick={() => handleSsoLogin(provider)}

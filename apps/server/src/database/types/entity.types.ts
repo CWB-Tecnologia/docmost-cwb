@@ -39,7 +39,11 @@ import {
   ScimTokens,
   Watchers,
   Audit as _Audit,
+  AuditCheckpoint as _AuditCheckpoint,
   Templates,
+  KanbanBoards,
+  KanbanColumns,
+  KanbanCards,
 } from './db';
 import { PageEmbeddings } from '@docmost/db/types/embeddings.types';
 
@@ -237,6 +241,10 @@ export type Audit = Selectable<_Audit>;
 export type InsertableAudit = Insertable<_Audit>;
 export type UpdatableAudit = Updateable<Omit<_Audit, 'id'>>;
 
+// Audit Checkpoint
+export type AuditCheckpoint = Selectable<_AuditCheckpoint>;
+export type InsertableAuditCheckpoint = Insertable<_AuditCheckpoint>;
+
 // Template
 export type Template = Selectable<Templates>;
 export type InsertableTemplate = Insertable<Templates>;
@@ -256,3 +264,14 @@ export type UpdatableBaseRow = Updateable<Omit<BaseRows, 'id'>>;
 export type BaseView = Selectable<BaseViews>;
 export type InsertableBaseView = Insertable<BaseViews>;
 export type UpdatableBaseView = Updateable<Omit<BaseViews, 'id'>>;
+
+// Kanban
+export type KanbanBoard = Selectable<KanbanBoards>;
+export type InsertableKanbanBoard = Insertable<KanbanBoards>;
+export type UpdatableKanbanBoard = Updateable<Omit<KanbanBoards, 'id'>>;
+export type KanbanColumn = Selectable<KanbanColumns>;
+export type InsertableKanbanColumn = Insertable<KanbanColumns>;
+export type UpdatableKanbanColumn = Updateable<Omit<KanbanColumns, 'id'>>;
+export type KanbanCard = Selectable<KanbanCards>;
+export type InsertableKanbanCard = Insertable<KanbanCards>;
+export type UpdatableKanbanCard = Updateable<Omit<KanbanCards, 'id'>>;
