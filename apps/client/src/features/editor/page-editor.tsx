@@ -193,7 +193,7 @@ function CollabPageEditor({
   const menuContainerRef = useRef(null);
   const { isIdle, resetIdle } = useIdle(FIVE_MINUTES, { initialState: false });
   const documentState = useDocumentVisibility();
-  const { pageSlug } = useParams();
+  const { pageSlug, spaceSlug } = useParams();
   const slugId = extractPageSlugId(pageSlug);
   const currentPageEditMode = useAtomValue(currentPageEditModeAtom);
   const canScroll = useCallback(
@@ -311,6 +311,8 @@ function CollabPageEditor({
           setEditor(editor);
           // @ts-ignore
           editor.storage.pageId = pageId;
+          // @ts-ignore
+          editor.storage.spaceSlug = spaceSlug;
           handleScrollTo(editor);
           editorRef.current = editor;
         }
@@ -331,9 +333,11 @@ function CollabPageEditor({
       setEditor(editor);
       // @ts-ignore
       editor.storage.pageId = pageId;
+      // @ts-ignore
+      editor.storage.spaceSlug = spaceSlug;
       editorRef.current = editor;
     }
-  }, [editor, pageId, setEditor]);
+  }, [editor, pageId, spaceSlug, setEditor]);
 
   const editorIsEditable = useEditorState({
     editor,

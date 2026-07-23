@@ -382,6 +382,28 @@ const CommandGroups: SlashMenuGroupedItemsType = {
       },
     },
     {
+      title: "Boards",
+      description: "Link to this space's boards",
+      searchTerms: ["boards", "kanban", "cards", "tasks", "quadro"],
+      icon: IconLayoutKanban,
+      command: ({ editor, range }: CommandProps) => {
+        const spaceSlug = (editor.storage as any)?.spaceSlug;
+        if (!spaceSlug) return;
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({
+            type: "text",
+            text: "Boards",
+            marks: [
+              { type: "link", attrs: { href: `/s/${spaceSlug}/boards` } },
+            ],
+          })
+          .run();
+      },
+    },
+    {
       title: "Toggle block",
       description: "Insert collapsible block.",
       searchTerms: ["collapsible", "block", "toggle", "details", "expand"],

@@ -11,29 +11,35 @@ import {
 export async function listBoards(
   spaceId: string,
 ): Promise<IKanbanBoardSummary[]> {
-  return api.post("/kanban/boards/list", { spaceId });
+  const req = await api.post<IKanbanBoardSummary[]>("/kanban/boards/list", {
+    spaceId,
+  });
+  return req.data;
 }
 
 export async function getBoard(boardId: string): Promise<IKanbanBoard> {
-  return api.post("/kanban/boards/info", { boardId });
+  const req = await api.post<IKanbanBoard>("/kanban/boards/info", { boardId });
+  return req.data;
 }
 
 export async function createBoard(data: {
   spaceId: string;
   title: string;
 }): Promise<IKanbanBoardSummary> {
-  return api.post("/kanban/boards/create", data);
+  const req = await api.post<IKanbanBoardSummary>("/kanban/boards/create", data);
+  return req.data;
 }
 
 export async function updateBoard(data: {
   boardId: string;
   title: string;
 }): Promise<IKanbanBoardSummary> {
-  return api.post("/kanban/boards/update", data);
+  const req = await api.post<IKanbanBoardSummary>("/kanban/boards/update", data);
+  return req.data;
 }
 
 export async function deleteBoard(boardId: string): Promise<void> {
-  return api.post("/kanban/boards/delete", { boardId });
+  await api.post("/kanban/boards/delete", { boardId });
 }
 
 export async function createColumn(data: {
@@ -42,7 +48,8 @@ export async function createColumn(data: {
   color?: string | null;
   position: string;
 }): Promise<IKanbanColumn> {
-  return api.post("/kanban/columns/create", data);
+  const req = await api.post<IKanbanColumn>("/kanban/columns/create", data);
+  return req.data;
 }
 
 export async function updateColumn(data: {
@@ -51,7 +58,8 @@ export async function updateColumn(data: {
   name?: string;
   color?: string | null;
 }): Promise<IKanbanColumn> {
-  return api.post("/kanban/columns/update", data);
+  const req = await api.post<IKanbanColumn>("/kanban/columns/update", data);
+  return req.data;
 }
 
 export async function moveColumn(data: {
@@ -59,31 +67,35 @@ export async function moveColumn(data: {
   columnId: string;
   position: string;
 }): Promise<IKanbanColumn> {
-  return api.post("/kanban/columns/move", data);
+  const req = await api.post<IKanbanColumn>("/kanban/columns/move", data);
+  return req.data;
 }
 
 export async function deleteColumn(data: {
   boardId: string;
   columnId: string;
 }): Promise<void> {
-  return api.post("/kanban/columns/delete", data);
+  await api.post("/kanban/columns/delete", data);
 }
 
 export async function createCard(data: CardInput): Promise<IKanbanCard> {
-  return api.post("/kanban/cards/create", data);
+  const req = await api.post<IKanbanCard>("/kanban/cards/create", data);
+  return req.data;
 }
 
 export async function updateCard(data: CardInput): Promise<IKanbanCard> {
-  return api.post("/kanban/cards/update", data);
+  const req = await api.post<IKanbanCard>("/kanban/cards/update", data);
+  return req.data;
 }
 
 export async function moveCard(data: MoveCardInput): Promise<IKanbanCard> {
-  return api.post("/kanban/cards/move", data);
+  const req = await api.post<IKanbanCard>("/kanban/cards/move", data);
+  return req.data;
 }
 
 export async function deleteCard(data: {
   boardId: string;
   cardId: string;
 }): Promise<void> {
-  return api.post("/kanban/cards/delete", data);
+  await api.post("/kanban/cards/delete", data);
 }
