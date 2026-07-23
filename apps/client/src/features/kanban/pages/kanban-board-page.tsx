@@ -71,6 +71,7 @@ import {
 } from "../types/kanban.types.ts";
 import classes from "./kanban-board.module.css";
 import { Error404 } from "@/components/ui/error-404.tsx";
+import { KanbanErrorBoundary } from "../components/kanban-error-boundary.tsx";
 
 type DragData = {
   type: "kanban-card" | "kanban-column";
@@ -79,6 +80,15 @@ type DragData = {
 };
 
 export default function KanbanBoardPage() {
+  const { spaceSlug, boardId } = useParams();
+  return (
+    <KanbanErrorBoundary resetKeys={[spaceSlug, boardId]}>
+      <KanbanBoardContent />
+    </KanbanErrorBoundary>
+  );
+}
+
+function KanbanBoardContent() {
   const { spaceSlug, boardId } = useParams();
   const navigate = useNavigate();
   const { data: space } = useGetSpaceBySlugQuery(spaceSlug!);

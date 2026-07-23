@@ -23,8 +23,18 @@ import {
   useBoardsQuery,
   useCreateBoardMutation,
 } from "../queries/kanban-query.ts";
+import { KanbanErrorBoundary } from "../components/kanban-error-boundary.tsx";
 
 export default function KanbanListPage() {
+  const { spaceSlug } = useParams();
+  return (
+    <KanbanErrorBoundary resetKeys={[spaceSlug]}>
+      <KanbanListContent />
+    </KanbanErrorBoundary>
+  );
+}
+
+function KanbanListContent() {
   const { spaceSlug } = useParams();
   const navigate = useNavigate();
   const { data: space } = useGetSpaceBySlugQuery(spaceSlug!);
