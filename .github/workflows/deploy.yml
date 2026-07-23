@@ -56,6 +56,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,22 +73,26 @@ jobs:
           source: docker-compose.prod.yml
           target: /opt/docmost-cwb
 
+      # Login on the VM uses the run's ephemeral GITHUB_TOKEN, which always has
+      # read access to packages created by this repo's workflows. No PAT needed.
+      # The stored credential goes stale after the job ends; that's fine because
+      # the pull happens during the job and restarts reuse the local image.
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1
         env:
           IMAGE_TAG: ${{ needs.build.outputs.tag }}
-          GHCR_PULL_USER: ${{ secrets.GHCR_PULL_USER }}
-          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VM_HOST }}
           port: ${{ secrets.VM_PORT }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          envs: IMAGE_TAG,GHCR_PULL_USER,GHCR_PULL_TOKEN
+          envs: IMAGE_TAG,GHCR_USER,GHCR_TOKEN
           script: |
             set -e
             cd /opt/docmost-cwb
-            echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u "$GHCR_PULL_USER" --password-stdin
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             export IMAGE_TAG
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --wait
