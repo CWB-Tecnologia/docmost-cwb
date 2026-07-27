@@ -8,7 +8,13 @@ import {
 import * as Y from 'yjs';
 import { Injectable, Logger } from '@nestjs/common';
 import { TiptapTransformer } from '@hocuspocus/transformer';
-import { getPageId, jsonToText, tiptapExtensions } from '../collaboration.util';
+import {
+  getPageId,
+  isBlankDoc,
+  jsonToText,
+  tiptapExtensions,
+} from '../collaboration.util';
+import { JSONContent } from '@tiptap/core';
 import { PageRepo } from '@docmost/db/repos/page/page.repo';
 import { InjectKysely } from 'nestjs-kysely';
 import { KyselyDB } from '@docmost/db/types/kysely.types';
@@ -123,11 +129,48 @@ export class PersistenceExtension implements Extension {
         });
 
         if (!page) {
-          this.logger.error(`Page with id ${pageId} not found`);
+          // Returning here would commit the transaction and report a
+          // successful store, after which hocuspocus unloads the document and
+          // discards its in-memory Y state — a total, silent loss. Throw so
+          // the document stays in memory and the next change retries.
+          throw new Error(`Page with id ${pageId} not found`);
+        }
+
+        // Refuse to blank a page that has content on disk.
+        //
+        // A Y.Doc that arrives empty is almost never a real edit: it is a
+        // client that mounted the collaborative editor before reconciling
+        // with the server, or one replaying delete operations it persisted
+        // in IndexedDB. Writing it back destroys the content for everyone
+        // and, once `content` is blanked, there is nothing left to recover
+        // from. The same guard already protects page history
+        // (history.processor.ts:59).
+        //
+        // Cost: a user who genuinely selects-all-and-deletes has that write
+        // rejected and must delete the page instead. That is the cheaper
+        // failure by a wide margin.
+        if (
+          isBlankDoc(tiptapJson) &&
+          page.content &&
+          !isBlankDoc(page.content as JSONContent)
+        ) {
+          this.logger.warn(
+            `Refusing to overwrite page ${pageId} with an empty document ` +
+              `(stored content is not empty). The in-memory Y state is ` +
+              `discarded; the database keeps the last good content.`,
+          );
+          page = null;
           return;
         }
 
         if (isDeepStrictEqual(tiptapJson, page.content)) {
+          // A store is only ever scheduled after an update was applied, so
+          // landing here means the update produced identical tiptap JSON.
+          // Legitimate for formatting-only Y changes, but it also means ydoc
+          // is left stale, so make it traceable.
+          this.logger.debug(
+            `Page content unchanged, skipping write: ${pageId}`,
+          );
           page = null;
           return;
         }
@@ -146,17 +189,37 @@ export class PersistenceExtension implements Extension {
           //this.logger.debug('Contributors error:' + err?.['message']);
         }
 
-        await this.pageRepo.updatePage(
+        // last_updated_by_id is nullable. hocuspocus hands us an empty
+        // lastContext for origins that are neither 'connection' nor 'local',
+        // and reading .user.id off it throws inside the transaction — losing
+        // the whole write to keep an attribution field. Blank attribution is
+        // the cheaper failure.
+        const lastUpdatedById = lastContext?.user?.id ?? null;
+        if (!lastUpdatedById) {
+          this.logger.warn(
+            `Storing ${pageId} without an editor id (empty lastContext)`,
+          );
+        }
+
+        const result = await this.pageRepo.updatePage(
           {
             content: tiptapJson,
             textContent: textContent,
             ydoc: ydocState,
-            lastUpdatedById: lastContext.user.id,
+            lastUpdatedById,
             contributorIds: contributorIds,
           },
           pageId,
           trx,
         );
+
+        // A zero-row UPDATE is otherwise indistinguishable from a successful
+        // save all the way up the stack.
+        if (result?.numUpdatedRows === 0n) {
+          throw new Error(
+            `Page update matched no rows: ${pageId} — content not persisted`,
+          );
+        }
 
         this.logger.debug(`Page updated: ${pageId} - SlugId: ${page.slugId}`);
       });
