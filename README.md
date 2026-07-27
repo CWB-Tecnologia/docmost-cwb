@@ -10,6 +10,10 @@
 </div>
 <br />
 
+> **Fork CWB.** Este repositório é implantado na VM `srv1402182` como
+> `docs.cwbti.com.br`. Operação, rollback e backup estão em [`docs/`](docs/README.md);
+> a configuração de host (Apache, TLS, ufw) vive no repo **`infra-cwb`**.
+
 ## Getting started
 
 To get started with Docmost, please refer to our [documentation](https://docmost.com/docs) or try our [cloud version](https://docmost.com/pricing) .

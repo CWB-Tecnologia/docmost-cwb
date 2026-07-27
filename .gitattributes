@@ -1,0 +1,5 @@
+# Authored on Windows, executed on the Linux VM: a CRLF shebang fails with
+# "bash\r: no such file or directory". Scoped to *.sh on purpose — a repo-wide
+# `* text=auto eol=lf` would renormalise this fork and conflict with every
+# upstream merge.
+*.sh text eol=lf
