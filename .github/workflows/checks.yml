@@ -19,18 +19,33 @@ jobs:
       - name: shellcheck
         run: shellcheck --severity=warning scripts/*.sh
 
+      # deploy.sh went in as 100644 once and every tick on the VM failed 203/EXEC. The
+      # unit calls it through bash now, so the mode is belt-and-braces — but an operator
+      # running `deploy.sh --status` by hand still needs it.
+      - name: scripts are executable in git
+        run: |
+          bad=$(git ls-files -s scripts/*.sh | awk '$1 != "100755" {print $4}')
+          if [ -n "$bad" ]; then
+            echo "not executable in git (git update-index --chmod=+x <file>):" >&2
+            echo "$bad" >&2
+            exit 1
+          fi
+
       - name: Compose file parses with the documented env
         run: |
           cp .env.example .env
           docker compose -f docker-compose.prod.yml config >/dev/null
           rm -f .env
 
-      # systemd-analyze resolves ExecStart, so the unit only verifies clean if the
-      # script exists at the path the VM uses.
+      # systemd-analyze resolves ExecStart, so the unit only verifies clean if the script
+      # exists at the path the VM uses. Mode 755, not the VM's 700: systemd-analyze runs
+      # as the unprivileged runner user here, and 700 root-owned made it report the same
+      # "not executable" error as a genuinely non-executable script — a false positive
+      # that hid nothing but would eventually be dismissed as noise.
       - name: systemd units verify
         run: |
           sudo install -d -m 755 /opt/docmost-cwb /opt/docmost-cwb-src/scripts
-          sudo install -m 700 scripts/deploy.sh /opt/docmost-cwb-src/scripts/deploy.sh
+          sudo install -m 755 scripts/deploy.sh /opt/docmost-cwb-src/scripts/deploy.sh
           sudo install -m 644 scripts/systemd/docmost-deploy.service /etc/systemd/system/
           sudo install -m 644 scripts/systemd/docmost-deploy.timer /etc/systemd/system/
           systemd-analyze verify /etc/systemd/system/docmost-deploy.service
