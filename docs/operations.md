@@ -91,11 +91,13 @@ Duas, `0600 root:root` em `/etc/docmost-cwb/` (`0700`), fora de qualquer backup:
 | arquivo | tipo | para quê |
 |---|---|---|
 | `ghcr.token` + `ghcr.user` | PAT **clássico**, só `read:packages` | `docker login ghcr.io` |
-| `github.token` | PAT fine-grained, só este repo: Contents read + Commit statuses write | `git fetch` e commit status |
+| `github.token` | PAT **clássico**, só `repo:status` | postar o commit status do deploy |
 
-GHCR **não aceita** token fine-grained: ali tem que ser clássico. Nenhum dos dois entra
-no `.env` — `backup.sh` copia o `.env` pra dentro de todo arquivo de backup, e o `.env`
-é `env_file` do container. Expiry, rotação e raio de alcance em [deploy.md](deploy.md).
+**Os dois são clássicos porque fine-grained não funcionou em nenhum dos dois caminhos**: o
+GHCR responde `Login Succeeded` e depois `denied`, e o POST de commit status devolve 404.
+Nenhum dos dois entra no `.env` — `backup.sh` copia o `.env` pra dentro de todo arquivo de
+backup, e o `.env` é `env_file` do container. Escopo, expiry e o que fazer quando o repo
+virar privado (deploy key, não PAT) estão em [deploy.md](deploy.md).
 
 Os secrets `VM_HOST`/`VM_PORT`/`VM_USER`/`VM_SSH_KEY` deste repo pertenciam ao deploy
 por SSH e foram removidos; nenhum workflow usa segredo de VM hoje.
