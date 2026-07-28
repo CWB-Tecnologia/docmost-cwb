@@ -1,0 +1,17 @@
+[Unit]
+Description=Check every 5 minutes whether main has a new Docmost image
+Documentation=https://github.com/CWB-Tecnologia/docmost-cwb/blob/main/docs/deploy.md
+
+[Timer]
+# Monotonic rather than OnCalendar: there is nothing to catch up on after downtime,
+# because the next tick sees the same HEAD. The build itself takes several minutes, so
+# 5 min adds ~2.5 min of median latency — comparable to the old SSH deploy's tail.
+OnBootSec=5min
+OnUnitActiveSec=5min
+# Keeps this off a round-number collision with the other timers on a 1 vCPU box.
+RandomizedDelaySec=30
+AccuracySec=15s
+Unit=docmost-deploy.service
+
+[Install]
+WantedBy=timers.target

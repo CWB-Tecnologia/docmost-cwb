@@ -18,6 +18,11 @@ onde reimportar. Este documento é o procedimento; os scripts que o executam sã
 | `.env` | `/opt/docmost-cwb/.env` | **sim**, modo 600 |
 | filas e locks de collab | volume `…_redis_data` → `/data` | **não**, é derivado |
 | a imagem | GHCR | **não**, reconstruível do git |
+| tokens do deploy | `/etc/docmost-cwb/*.token` | **não, de propósito** — credencial de máquina |
+
+Os tokens ficam de fora porque este arquivo mesmo manda copiar o backup pra fora da VM:
+credencial de leitura do GHCR e de escrita de commit status não têm o que fazer viajando
+junto. VM reconstruída re-emite os dois — [deploy.md](deploy.md).
 
 O `.env` entra porque sem ele o stack restaurado **não sobe**: `DATABASE_URL` precisa
 casar com `POSTGRES_*`, e um `APP_SECRET` diferente invalida toda sessão e todo token
@@ -75,13 +80,19 @@ um upgrade, antes de um restore — pare a aplicação primeiro:
 
 ```bash
 cd /opt/docmost-cwb
-docker compose -f docker-compose.prod.yml stop docmost   # os 30s de grace fazem o flush
-bash scripts/backup.sh
-docker compose -f docker-compose.prod.yml up -d --wait
+flock /run/lock/docmost-cwb.lock bash -c '
+  docker compose -f docker-compose.prod.yml stop docmost   # os 30s de grace fazem o flush
+  bash scripts/backup.sh
+  docker compose -f docker-compose.prod.yml up -d --wait'
 ```
 
 O `stop_grace_period: 30s` do compose existe exatamente pra esse flush terminar. Os
 10s default do Docker dariam SIGKILL no meio dele.
+
+**O `flock` não é enfeite.** O timer `docmost-deploy` roda a cada 5 min e faz `up -d`, que
+**sobe serviço parado** — sem o lock, ele reinicia o Docmost no meio do seu `pg_dump` e a
+captura exata deixa de ser exata. O `deploy.sh` toma o mesmo lock e sai limpo quando está
+ocupado.
 
 ## Backup
 
@@ -126,14 +137,19 @@ cp -a .env "$DEST/env" && chmod 600 "$DEST"/*
 ### Cron
 
 ```
-30 2 * * * root cd /opt/docmost-cwb && bash scripts/backup.sh >> /var/log/docmost-backup.log 2>&1
+30 2 * * * root flock -w 3600 /run/lock/docmost-cwb.lock sh -c 'cd /opt/docmost-cwb && bash scripts/backup.sh' >> /var/log/docmost-backup.log 2>&1
 ```
 
 **02:30, não 02:15** — o `glpi-cwb` roda às 02:15 e a VM tem 1 vCPU. Dois dumps
 concorrentes na mesma CPU fazem os dois demorarem e degradam os dois serviços.
 
-O script vem de `/opt/docmost-cwb/scripts/`, que **não** é atualizado pelo deploy —
-ver "Entregar os scripts na VM" em [operations.md](operations.md).
+O `flock -w 3600` é o mesmo lock do deploy: se um deploy estiver no meio de um
+`up -d --wait`, o backup espera em vez de tirar dump de um stack sendo recriado. Uma hora
+de espera é folgada de propósito — melhor backup atrasado que backup inconsistente.
+
+O script vem de `/opt/docmost-cwb/scripts/` e **é** atualizado a cada deploy, instalado do
+clone pelo `deploy.sh`. Mudança em `backup.sh` chega sozinha na VM no tick seguinte ao
+merge; não há mais ritual de `scp` + comparar `sha256sum`.
 
 ## Restore
 

@@ -1,0 +1,37 @@
+name: Checks
+
+# Gate for the ops artefacts. This matters more than it looks: scripts/deploy.sh and
+# the systemd units are load-bearing infrastructure that reaches production with no
+# other gate, and a typo in deploy.sh silently ends every future deploy — the VM would
+# keep ticking and keep failing pre-flight.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ops:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: shellcheck
+        run: shellcheck --severity=warning scripts/*.sh
+
+      - name: Compose file parses with the documented env
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.prod.yml config >/dev/null
+          rm -f .env
+
+      # systemd-analyze resolves ExecStart, so the unit only verifies clean if the
+      # script exists at the path the VM uses.
+      - name: systemd units verify
+        run: |
+          sudo install -d -m 755 /opt/docmost-cwb /opt/docmost-cwb-src/scripts
+          sudo install -m 700 scripts/deploy.sh /opt/docmost-cwb-src/scripts/deploy.sh
+          sudo install -m 644 scripts/systemd/docmost-deploy.service /etc/systemd/system/
+          sudo install -m 644 scripts/systemd/docmost-deploy.timer /etc/systemd/system/
+          systemd-analyze verify /etc/systemd/system/docmost-deploy.service
+          systemd-analyze verify /etc/systemd/system/docmost-deploy.timer

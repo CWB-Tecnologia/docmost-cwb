@@ -11,10 +11,14 @@ Configuração de host — vhost do Apache, TLS/certbot, ufw, swap — vive no r
 
 | caminho | o quê |
 |---|---|
-| `/opt/docmost-cwb/docker-compose.prod.yml` | **sobrescrito por todo deploy**; editar à mão na VM é revertido no próximo push |
+| `/opt/docmost-cwb/docker-compose.prod.yml` | **reinstalado do clone a cada deploy**; editar à mão na VM é revertido no tick seguinte |
 | `/opt/docmost-cwb/.env` | modo 600, **única cópia**, nunca no git. Comece do `.env.example` |
-| `/opt/docmost-cwb/scripts/` | `backup.sh` e `restore.sh`, entregues à mão (ver abaixo) |
+| `/opt/docmost-cwb/scripts/` | `backup.sh`, `restore.sh`, `deploy.sh` — instalados pelo deploy a partir do clone |
 | `/opt/docmost-cwb/backup/` | saída do `backup.sh`, modo 700 |
+| `/opt/docmost-cwb-src/` | clone do repo, descartável; é daqui que o `deploy.sh` roda |
+| `/etc/docmost-cwb/` | tokens (`ghcr.token`, `ghcr.user`, `github.token`) e o flag `hold` — 700 |
+| `/var/lib/docmost-cwb/state` | o que está deployado e o que falhou, 600 |
+| `/etc/systemd/system/docmost-deploy.{service,timer}` | o agendador do deploy, copiado de `scripts/systemd/` |
 | `infra-cwb/apache/sites-available/docs.cwbti.com.br.conf` | o proxy reverso de verdade |
 
 ## Serviços
@@ -49,15 +53,21 @@ justamente pra não depender do prefixo.
 
 ## Deploy
 
-`.github/workflows/deploy.yml`, em todo push para `main`:
+**A VM puxa; o CI só publica imagem.** Runbook completo em [deploy.md](deploy.md) — aqui
+fica só o que muda a forma de trabalhar:
 
-1. build e push pro GHCR com duas tags: `sha-<12>` e `main-latest`
-2. `scp` do `docker-compose.prod.yml` para `/opt/docmost-cwb`
-3. via SSH: `docker login` → `compose pull` → `compose up -d --wait` →
-   `docker image prune -af`
+1. push em `main` → `.github/workflows/publish.yml` builda e empurra `sha-<12>` e
+   `main-latest` pro GHCR, e marca o commit como `pending`.
+2. na VM, o timer `docmost-deploy` (5 em 5 min) faz `git fetch`, deriva a tag do HEAD,
+   `compose pull docmost` e `up -d --wait`.
+3. o resultado real aparece no commit status `deploy/vm-srv1402182` e em
+   `journalctl -u docmost-deploy`.
 
-O `--wait` é portão de healthcheck: o job só passa quando os três serviços ficam
-saudáveis.
+**Actions verde não prova deploy.** Era `scp` + SSH até 2026-07-28; o SSH de entrada
+passou a ter allowlist de IP e runner do GitHub tem IP dinâmico.
+
+Deploy imediato à mão: `systemctl start docmost-deploy.service`. Pausar deploys:
+`printf 'motivo\n' > /etc/docmost-cwb/hold`.
 
 `stop_grace_period: 30s` no serviço `docmost` existe porque o shutdown descarrega os
 documentos de collab pendentes no Postgres. Os 10s default do Docker dariam SIGKILL no
@@ -66,44 +76,29 @@ meio do flush e perderiam edição não salva **em todo deploy**.
 Três fatos que valem saber antes de mergear:
 
 - **Não há portão `DEPLOY_ENABLED`.** O `glpi-cwb` tem; este repo não. Todo push em
-  `main` chega em produção.
+  `main` chega em produção em ≤5 min. O que existe é o `hold`, manual e na VM.
 - **`migrateToLatest()` roda no boot** quando `NODE_ENV=production`
   (`apps/server/src/database/database.module.ts:139-141`). Todo deploy é também uma
   migration de schema. Consequências em [rollback.md](rollback.md).
-- **`docker image prune -af` apaga a imagem anterior** da VM. Rollback não é pegar a
-  imagem de volta do disco.
+- **A imagem anterior fica na VM** (retenção de duas tags no `deploy.sh`), então um pin
+  de `IMAGE_TAG` é caminho rápido de verdade. Não era assim enquanto o deploy terminava
+  em `docker image prune -af`.
 
-### Segredos do repositório
+### Credenciais na VM
 
-`VM_HOST`, `VM_PORT`, `VM_USER`, `VM_SSH_KEY` — setados **neste repositório**, não na
-organização. O motivo (plano Free do GitHub, secrets de organização não alcançam repo
-privado, o modo silencioso como isso falha) está documentado em `glpi-cwb/README.md`;
-não vale repetir aqui.
+Duas, `0600 root:root` em `/etc/docmost-cwb/` (`0700`), fora de qualquer backup:
 
-### Entregar os scripts na VM
+| arquivo | tipo | para quê |
+|---|---|---|
+| `ghcr.token` + `ghcr.user` | PAT **clássico**, só `read:packages` | `docker login ghcr.io` |
+| `github.token` | PAT fine-grained, só este repo: Contents read + Commit statuses write | `git fetch` e commit status |
 
-O deploy copia **só** o `docker-compose.prod.yml` (`deploy.yml:73`). `scripts/` vai à
-mão. **Windows (PowerShell):**
+GHCR **não aceita** token fine-grained: ali tem que ser clássico. Nenhum dos dois entra
+no `.env` — `backup.sh` copia o `.env` pra dentro de todo arquivo de backup, e o `.env`
+é `env_file` do container. Expiry, rotação e raio de alcance em [deploy.md](deploy.md).
 
-```powershell
-scp -r scripts <user>@<vm>:/opt/docmost-cwb/
-```
-
-Na VM:
-
-```bash
-chmod 700 /opt/docmost-cwb/scripts/*.sh
-```
-
-> **Lacuna conhecida:** script alterado neste repo **não** chega sozinho na VM. Depois
-> de qualquer mudança em `scripts/`, re-copie e confirme que os dois lados batem antes
-> de confiar num backup:
-> ```bash
-> sha256sum /opt/docmost-cwb/scripts/*.sh     # na VM
-> ```
-> ```powershell
-> Get-FileHash scripts\*.sh -Algorithm SHA256 # no Windows
-> ```
+Os secrets `VM_HOST`/`VM_PORT`/`VM_USER`/`VM_SSH_KEY` deste repo pertenciam ao deploy
+por SSH e foram removidos; nenhum workflow usa segredo de VM hoje.
 
 ## Comandos do dia a dia
 
@@ -126,10 +121,19 @@ $DC exec -T db sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 free -h ; docker stats --no-stream ; df -h /
 ```
 
-Qual imagem está rodando agora:
+Qual imagem está rodando agora — a tag, e o digest (que é o que distingue dois builds da
+mesma tag). `RepoDigests` mora na **imagem**, não no container, daí o salto:
 
 ```bash
-docker inspect --format '{{.Config.Image}}' "$(docker compose -f docker-compose.prod.yml ps -q docmost)"
+CID=$(docker compose -f docker-compose.prod.yml ps -q docmost)
+docker inspect --format '{{.Config.Image}}' "$CID"
+docker image inspect --format '{{index .RepoDigests 0}}' "$(docker inspect --format '{{.Image}}' "$CID")"
+```
+
+Ou de uma vez, junto com o que o deploy acha que deployou:
+
+```bash
+/opt/docmost-cwb-src/scripts/deploy.sh --status
 ```
 
 ## Regra do bind em loopback
@@ -158,9 +162,14 @@ produção fica. `docker-compose.yml` (o de dev, herdado do upstream) mantém
 
 ## Coisas que vão morder
 
-- **1 vCPU e 3.8 GB, sem swap por default,** divididos com GLPI, MariaDB, Postgres,
-  Redis e MeshCentral. Antes de qualquer coisa pesada, confira `swapon --show` e a
-  receita em `infra-cwb/host/swap.md`.
+- **1 vCPU e 3.8 GB,** divididos com mais gente do que a documentação diz: GLPI +
+  MariaDB, Affine + Postgres/pgvector + Redis, RustDesk (`hbbs`/`hbbr`) e MeshCentral.
+  Medido em 2026-07-28: 2,3 GB em uso, 1,5 GB disponível, swap de 2 GB ativa. Antes de
+  qualquer coisa pesada, confira `swapon --show` e a receita em `infra-cwb/host/swap.md`.
+- **O deploy pode encher o disco.** Cada imagem do Docmost ocupa ~1,8 GB e a tag puxada é
+  imutável, então imagem velha não fica dangling sozinha. O `deploy.sh` mantém duas e
+  recusa deploy com menos de 8 GB livres em `/var/lib/docker` — sem isso, encher o disco
+  levaria Postgres e MariaDB junto.
 - **`docs` é o vhost *default* em :80 e :443.** Qualquer `Host` desconhecido que chegue
   na VM cai no Docmost. Dívida rastreada em `infra-cwb/docs/vm-srv1402182.md`, não é
   deste repo.
@@ -184,10 +193,18 @@ Uma linha cada, sem proposta — abrir issue antes de resolver:
 - **Sem backup off-host.** `backup.sh` escreve no mesmo disco que protege. Já
   rastreado em `infra-cwb/docs/vm-srv1402182.md`.
 - **Sem portão de deploy.** Todo push em `main` vai pra produção.
-- **Sem monitoramento.** Os healthchecks existem e ninguém os observa; não há alerta.
-- **Entrega manual de `scripts/`**, com o risco de divergência descrito acima.
-- **O allowlist de rede que restringe o acesso ao origin não está documentado em
-  nenhum repo.** `infra-cwb/host/ufw.md` cobre só o ufw, que não pega tráfego
-  publicado por container. A regra pertence ao `infra-cwb`, não a este repo — mas
-  quem reconstruir a VM a partir da documentação atual não vai saber que ela existe.
+- **Sem monitoramento e sem alerta.** O commit status diz se o deploy pegou, mas é
+  descoberta passiva: ninguém é acordado por um deploy que falhou de madrugada.
+- **Token expirado mata o deploy em silêncio.** O `deploy.sh` avisa faltando ≤14 dias no
+  journal; se ninguém ler o journal, o aviso não serve de nada.
+- **`deploy.sh` quebrado em `main` desabilita todos os deploys futuros.** Mitigado por
+  `.github/workflows/checks.yml` em PR, não eliminado.
+- **O allowlist de rede não está documentado em nenhum repo** — e desde 2026-07-28 ele
+  restringe também o **SSH de entrada**, que é o que matou o deploy antigo.
+  `infra-cwb/host/ufw.md` ainda afirma `22/tcp ALLOW IN Anywhere`. A regra pertence ao
+  `infra-cwb`; quem reconstruir a VM pela documentação atual não vai saber que existe.
+- **Serviços na VM que nenhum repo versiona:** Affine (`affine_server` em
+  `127.0.0.1:13010`, com Postgres/pgvector e Redis próprios), RustDesk (`hbbs`/`hbbr`
+  escutando em `*:21115-21119` e `*:52838/udp`, **fora** de loopback) e
+  `meshcentral-quicktest`. Inventário e regra de bind são do `infra-cwb`.
 - **Sem limite de log de container** (acima).

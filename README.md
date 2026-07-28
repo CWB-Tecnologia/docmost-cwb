@@ -11,8 +11,16 @@
 <br />
 
 > **Fork CWB.** Este repositório é implantado na VM `srv1402182` como
-> `docs.cwbti.com.br`. Operação, rollback e backup estão em [`docs/`](docs/README.md);
-> a configuração de host (Apache, TLS, ufw) vive no repo **`infra-cwb`**.
+> `docs.cwbti.com.br`. O deploy é **puxado pela VM** (timer `docmost-deploy`), não
+> empurrado pelo CI — [`docs/deploy.md`](docs/deploy.md). Operação, rollback e backup
+> estão em [`docs/`](docs/README.md); a configuração de host (Apache, TLS, ufw) vive no
+> repo **`infra-cwb`**.
+>
+> **AGPL-3.0.** O §13 obriga a oferecer o Corresponding Source a quem usa a instância pela
+> rede. Quem usa `docs.cwbti.com.br` é pessoal interno da CWB, e o acesso a este
+> repositório é como esse oferecimento é cumprido — inclusive se ele deixar de ser
+> público. Quem restringir a visibilidade precisa garantir que os usuários da instância
+> continuem com acesso de leitura.
 
 ## Getting started
 

@@ -1,0 +1,29 @@
+[Unit]
+Description=Docmost pull-based deploy (git HEAD -> GHCR -> compose up)
+Documentation=https://github.com/CWB-Tecnologia/docmost-cwb/blob/main/docs/deploy.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# systemd does NOT set HOME for a system service without User=; it inherits PID 1's
+# (HOME=/). The docker CLI would then look for /.docker/config.json, find no
+# credential, pull anonymously and take a 401 on the private package.
+Environment=HOME=/root
+Environment=DOCKER_CONFIG=/root/.docker
+# The compose project name comes from this directory's basename, and backup.sh
+# resolves volumes by that project label. Running from the clone would invent a new
+# project and a new set of EMPTY volumes.
+WorkingDirectory=/opt/docmost-cwb
+# Runs from the clone, not from /opt/docmost-cwb/scripts/: git replaces the file
+# mid-run and bash reads scripts incrementally. See the script header.
+ExecStart=/opt/docmost-cwb-src/scripts/deploy.sh
+# A cold pull on 1 vCPU plus `up -d --wait` (start_period 40s + 5x15s retries) easily
+# exceeds DefaultTimeoutStartSec=90s, which would SIGTERM the deploy mid-pull.
+TimeoutStartSec=1800
+Nice=5
+SyslogIdentifier=docmost-deploy
+
+# No [Install] section on purpose: the timer starts this unit, and a human runs
+# `systemctl start docmost-deploy.service` for an immediate deploy. It is never enabled.
