@@ -1,0 +1,96 @@
+name: Publish image
+
+# This workflow publishes an image. It does NOT deploy.
+#
+# Until 2026-07-28 it also deployed, over scp+ssh to the VM. Inbound SSH there is now
+# restricted to an IP allowlist and GitHub-hosted runners have dynamic IPs, so every
+# run started failing with `dial tcp: i/o timeout`. The VM pulls on its own now
+# (systemd timer `docmost-deploy`, every 5 min) — see docs/deploy.md.
+#
+# The only thing this workflow says about the deploy is the `pending` commit status it
+# posts below. The VM turns that green or red.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Two merges in quick succession racing to move `main-latest` can leave the mutable
+  # tag pointing at the OLDER build, and serialising also stops them thrashing the
+  # same type=gha cache. The VM pulls immutable sha-<12> tags, so the stakes are lower
+  # than they were, but this still costs nothing.
+  group: publish-main
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/cwb-tecnologia/docmost-cwb
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      statuses: write
+    steps:
+      # Do NOT init the `apps/server/src/ee` submodule: it points to the private
+      # docmost/ee repo which is not accessible here. The server loads EE modules
+      # via optional runtime require() wrapped in try/catch (see app.module.ts),
+      # so building without it produces a working community-edition image.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: meta
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE }}:main-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Yellow until the VM proves otherwise. A commit whose deploy never landed stays
+      # pending instead of lying green, which is the whole point. Never make this
+      # context a required status check: a stopped VM would block every merge.
+      - name: Mark the VM deploy as pending
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=pending \
+            -f context='deploy/vm-srv1402182' \
+            -f description='imagem publicada; a VM puxa em <=5 min' \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Imagem publicada"
+            echo ""
+            echo "- \`${IMAGE}:${{ steps.meta.outputs.tag }}\`"
+            echo "- \`${IMAGE}:main-latest\`"
+            echo ""
+            echo "**Este run NÃO prova que o deploy aconteceu.** A VM puxa por conta"
+            echo "própria (timer \`docmost-deploy\`, a cada 5 min). O resultado real"
+            echo "aparece no commit status \`deploy/vm-srv1402182\`, e o log fica em"
+            echo "\`journalctl -u docmost-deploy\` na VM. Runbook: \`docs/deploy.md\`."
+          } >> "$GITHUB_STEP_SUMMARY"
