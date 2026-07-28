@@ -153,7 +153,20 @@ Duas, arquivos separados pra revogar e rotacionar independente:
 | arquivo | tipo | para quê |
 |---|---|---|
 | `/etc/docmost-cwb/ghcr.token` + `ghcr.user` | PAT clássico, **só** `read:packages` | `docker login ghcr.io` |
-| `/etc/docmost-cwb/github.token` | PAT fine-grained, só este repo: **Contents: read** + **Commit statuses: write** | `git fetch` e postar o commit status |
+| `/etc/docmost-cwb/github.token` | PAT clássico, **só** `repo:status` | postar o commit status |
+
+Os dois são **clássicos** porque os dois caminhos recusaram fine-grained na prática: o GHCR
+faz `Login Succeeded` e depois responde `denied`, e o POST de status devolveu 404. Vale
+tentar fine-grained de novo se a org habilitar — o escopo seria bem menor —, mas não fique
+depurando: o sintoma é sempre 403/404/`denied`, nunca "token inválido".
+
+`repo:status` é mais largo do que parece: vale para **todo** repo que a conta dona alcança.
+É só escrita de status, não de conteúdo, e é o preço de não depender de aprovação de org.
+
+Quando este repo virar privado, o `git fetch` **não** vira PAT: use **deploy key
+read-only** e aponte a remote do clone pra SSH. Escopo é um repo, leitura, sem expiry — e o
+`deploy.sh` não muda, porque sem `github.token` de conteúdo ele já roda `git` sem
+credencial. O helper de credencial HTTPS no script continua lá como plano B.
 
 Regras que não são estilo, são consequência:
 
