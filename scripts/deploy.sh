@@ -122,13 +122,16 @@ token_expiry_warn() {
     fi
 }
 
-# The clone needs a credential now that the repo is private. Built on the fly from
-# the same token file the status POST uses, so there is one source of truth and no
-# second copy of the secret in ~/.git-credentials.
+# The fetch is anonymous while this repo is public. When it goes private it needs a
+# credential — and NOT the one github.token holds: that is a classic `repo:status` PAT,
+# which does not grant git read access, so pointing git at it fails with
+# `could not read Username for 'https://github.com'`. glpi-cwb hit exactly that. Put a
+# fine-grained PAT with Contents: read-only in git.token, or switch the remote to SSH with
+# a read-only deploy key and leave both files out of it.
 git_src() {
-    if [ -r "$CONF_DIR/github.token" ]; then
+    if [ -r "$CONF_DIR/git.token" ]; then
         git -C "$SRC" \
-            -c "credential.helper=!f() { [ \"\$1\" = get ] && printf 'username=x-access-token\npassword=%s\n' \"\$(cat $CONF_DIR/github.token)\"; }; f" \
+            -c "credential.helper=!f() { [ \"\$1\" = get ] && printf 'username=x-access-token\npassword=%s\n' \"\$(cat $CONF_DIR/git.token)\"; }; f" \
             "$@"
     else
         git -C "$SRC" "$@"
@@ -280,7 +283,12 @@ for unit in docmost-deploy.service docmost-deploy.timer; do
     fi
 done
 
-git_src fetch --quiet origin "$BRANCH" || die "git fetch failed (network, or the Contents:read token lapsed)"
+if ! git_src fetch --quiet origin "$BRANCH"; then
+    if [ -r "$CONF_DIR/git.token" ]; then
+        die "git fetch failed — network, or the token in $CONF_DIR/git.token lost Contents:read"
+    fi
+    die "git fetch failed; if this repo is now private the fetch needs $CONF_DIR/git.token (fine-grained, Contents:read) or an SSH deploy key — repo:status does NOT grant it"
+fi
 git_src reset --hard --quiet "origin/$BRANCH" || die "git reset --hard failed"
 SHA=$(git_src rev-parse HEAD)
 # `git rev-parse --short=12` returns AT LEAST 12 characters and more when ambiguous;

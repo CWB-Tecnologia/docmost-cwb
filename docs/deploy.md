@@ -154,6 +154,7 @@ Duas, arquivos separados pra revogar e rotacionar independente:
 |---|---|---|
 | `/etc/docmost-cwb/ghcr.token` + `ghcr.user` | PAT clássico, **só** `read:packages` | `docker login ghcr.io` |
 | `/etc/docmost-cwb/github.token` | PAT clássico, **só** `repo:status` | postar o commit status |
+| `/etc/docmost-cwb/git.token` | PAT fine-grained, **Contents: read** | `git fetch` — **só necessário quando o repo virar privado** |
 
 Os dois são **clássicos** porque os dois caminhos recusaram fine-grained na prática: o GHCR
 faz `Login Succeeded` e depois responde `denied`, e o POST de status devolveu 404. Vale
@@ -163,10 +164,19 @@ depurando: o sintoma é sempre 403/404/`denied`, nunca "token inválido".
 `repo:status` é mais largo do que parece: vale para **todo** repo que a conta dona alcança.
 É só escrita de status, não de conteúdo, e é o preço de não depender de aprovação de org.
 
-Quando este repo virar privado, o `git fetch` **não** vira PAT: use **deploy key
-read-only** e aponte a remote do clone pra SSH. Escopo é um repo, leitura, sem expiry — e o
-`deploy.sh` não muda, porque sem `github.token` de conteúdo ele já roda `git` sem
-credencial. O helper de credencial HTTPS no script continua lá como plano B.
+Quando este repo virar privado, o `git fetch` precisa de credencial própria — e **não** a do
+commit status. O `glpi-cwb` provou isso do jeito ruim: `repo:status` não dá leitura de
+conteúdo, e o fetch morre com `could not read Username for 'https://github.com'`. Duas
+opções, ambas suportadas pelo script sem mudança de código:
+
+- **deploy key read-only** por SSH: um repo, leitura, sem expiry, nenhum arquivo de token —
+  aponte a remote do clone pra `git@github.com:...` e pronto;
+- **`/etc/docmost-cwb/git.token`**: PAT fine-grained com Contents: read-only, que o script
+  injeta como credential helper.
+
+Sem nenhum dos dois, o `git` cai no que a conta root tiver configurado (nesta VM, `gh auth`).
+Funciona, e é a coisa errada pra depender: credencial de uma pessoa, que rotaciona sem avisar
+o timer.
 
 Regras que não são estilo, são consequência:
 
