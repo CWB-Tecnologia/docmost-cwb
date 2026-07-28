@@ -8,8 +8,13 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    # Published on loopback only: the host Apache terminates TLS for
+    # docs.cwbti.com.br and reverse-proxies here (infra-cwb repo). ufw does not
+    # filter Docker's iptables chains, so "3000:3000" would bind 0.0.0.0 and the
+    # only barrier on <vm-ip>:3000 would be a network allowlist that lives outside
+    # this repo. Same shape as glpi-cwb's GLPI_HTTP_PORT.
     ports:
-      - "3000:3000"
+      - "${DOCMOST_HTTP_PORT:-127.0.0.1:3000}:3000"
     restart: unless-stopped
     # Shutdown flushes pending collab documents to Postgres before unloading them.
     # Docker's 10s default can SIGKILL mid-flush and drop unsaved edits on every deploy.
