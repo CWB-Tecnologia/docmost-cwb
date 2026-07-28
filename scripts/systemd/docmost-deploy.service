@@ -18,7 +18,12 @@ Environment=DOCKER_CONFIG=/root/.docker
 WorkingDirectory=/opt/docmost-cwb
 # Runs from the clone, not from /opt/docmost-cwb/scripts/: git replaces the file
 # mid-run and bash reads scripts incrementally. See the script header.
-ExecStart=/opt/docmost-cwb-src/scripts/deploy.sh
+#
+# Invoked through bash instead of relying on the exec bit: the first rollout failed with
+# 203/EXEC because the script was committed 100644, and the mode is one `git add` on a
+# core.filemode=false checkout away from being lost again. The interpreter is explicit
+# here, so the unit works whatever the file mode is.
+ExecStart=/bin/bash /opt/docmost-cwb-src/scripts/deploy.sh
 # A cold pull on 1 vCPU plus `up -d --wait` (start_period 40s + 5x15s retries) easily
 # exceeds DefaultTimeoutStartSec=90s, which would SIGTERM the deploy mid-pull.
 TimeoutStartSec=1800
