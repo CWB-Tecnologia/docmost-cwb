@@ -7,6 +7,7 @@ import { FileTaskProcessor } from './processors/file-task.processor';
 import { ImportAttachmentService } from './services/import-attachment.service';
 import { FileTaskController } from './file-task.controller';
 import { PageModule } from '../../core/page/page.module';
+import { SpaceModule } from '../../core/space/space.module';
 
 @Module({
   providers: [
@@ -17,6 +18,6 @@ import { PageModule } from '../../core/page/page.module';
   ],
   exports: [ImportService, ImportAttachmentService],
   controllers: [ImportController, FileTaskController],
-  imports: [StorageModule, PageModule],
+  imports: [StorageModule, PageModule, SpaceModule],
 })
 export class ImportModule {}
