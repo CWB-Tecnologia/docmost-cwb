@@ -8,6 +8,7 @@ import {
   ISpaceMember,
 } from "@/features/space/types/space.types";
 import { IPagination, QueryParams } from "@/lib/types.ts";
+import { IFileTask } from "@/features/file-task/types/file-task.types.ts";
 import { saveAs } from "file-saver";
 
 export async function getSpaces(
@@ -24,6 +25,39 @@ export async function getSpaceById(spaceId: string): Promise<ISpace> {
 
 export async function createSpace(data: Partial<ISpace>): Promise<ISpace> {
   const req = await api.post<ISpace>("/spaces/create", data);
+  return req.data;
+}
+
+export interface IImportSpaceZipParams {
+  file: File;
+  name: string;
+  slug: string;
+  description?: string;
+  source?: string;
+}
+
+export async function importSpaceZip(
+  params: IImportSpaceZipParams,
+): Promise<{ space: ISpace; fileTask: IFileTask }> {
+  const formData = new FormData();
+  // The server reads these from the multipart fields that precede the file, so
+  // the file has to be appended last.
+  formData.append("name", params.name);
+  formData.append("slug", params.slug);
+  formData.append("description", params.description ?? "");
+  formData.append("source", params.source ?? "generic");
+  formData.append("file", params.file);
+
+  const req = await api.post<{ space: ISpace; fileTask: IFileTask }>(
+    "/spaces/import-zip",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+
   return req.data;
 }
 
