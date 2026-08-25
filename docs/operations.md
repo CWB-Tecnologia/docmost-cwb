@@ -164,10 +164,20 @@ produção fica. `docker-compose.yml` (o de dev, herdado do upstream) mantém
 
 ## Coisas que vão morder
 
-- **1 vCPU e 3.8 GB,** divididos com mais gente do que a documentação diz: GLPI +
-  MariaDB, Affine + Postgres/pgvector + Redis, RustDesk (`hbbs`/`hbbr`) e MeshCentral.
-  Medido em 2026-07-28: 2,3 GB em uso, 1,5 GB disponível, swap de 2 GB ativa. Antes de
-  qualquer coisa pesada, confira `swapon --show` e a receita em `infra-cwb/host/swap.md`.
+- **2 vCPU e 8 GB** (upgrade de 2026-08-19; era 1 vCPU/3.8 GB), divididos com muito
+  mais gente do que esta lista dizia: GLPI + MariaDB, Affine + Postgres/pgvector +
+  Redis, RustDesk (`hbbs`/`hbbr`), MeshCentral, GlitchTip + Postgres + Valkey, a stack
+  inteira do `support-platform` (5 serviços + Postgres + Redis próprios) e
+  `listmonk_sindipar`. Medido em 2026-08-25: 3,5 GB em uso, 4,2 GB disponível, swap
+  praticamente parada — RAM não é mais o aperto. Ver `infra-cwb/docs/vm-srv1402182.md`
+  pro inventário completo e `infra-cwb/host/swap.md` pra receita do swap.
+- **O Apache do host é ponto único de contenção pra todo mundo atrás dele** (GLPI,
+  Docmost, GlitchTip, Affine, MeshCentral) — em 2026-08-25 ~144 túneis websocket do
+  MeshCentral esgotaram `MaxRequestWorkers` do `mpm_prefork` e deixaram Docmost/GLPI
+  respondendo em dezenas de segundos com `docker stats`/`vmstat` limpos o tempo todo.
+  Causa e fix (MPM `event`, `MaxRequestWorkers 400`) em `infra-cwb/host/apache-mpm.md`.
+  Se "recursos livres mas tudo lento" voltar a acontecer, comece por lá, não pelo
+  container do Docmost.
 - **O deploy pode encher o disco.** Cada imagem do Docmost ocupa ~1,8 GB e a tag puxada é
   imutável, então imagem velha não fica dangling sozinha. O `deploy.sh` mantém duas e
   recusa deploy com menos de 8 GB livres em `/var/lib/docker` — sem isso, encher o disco
